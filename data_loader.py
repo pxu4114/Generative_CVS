@@ -24,6 +24,7 @@ class Data_loader(Dataset):
 		self.img_path = np.load(os.path.join(data_path, 'image_%s.npy'%self.phase))
 		self.text_path = np.load(os.path.join(data_path, 'text_%s.npy'%self.phase))
 		self.label_path = np.load(os.path.join(data_path, 'label_%s.npy'%self.phase))
+		self.len = self.img_path.shape[0]
 		self.transform = transform
 		self.num = num
 		
@@ -64,5 +65,5 @@ class Data_loader(Dataset):
 
 	def __len__(self):
 		if self.num is None:
-			return self.label_path.shape[0]
+			return len(self.img_path)
 		else: return self.num	

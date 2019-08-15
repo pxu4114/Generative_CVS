@@ -9,13 +9,14 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 import pdb
 
-def encode_data(val_loader, model, batch_size):
+def encode_data(val_dataset, val_loader, model, batch_size):
 	"""Encode all images and captions loadable by `data_loader`
 	"""
 
 	# switch to evaluate mode
 	model.val_start()
-	test_num_samples = 2933#len(val_loader)
+	# pdb.set_trace()
+	test_num_samples = val_dataset.__len__()
 	# all_labels = []
 	sim_mat = np.zeros((test_num_samples,test_num_samples))	
 	all_img_emb = np.zeros((test_num_samples, 512))	
@@ -29,10 +30,11 @@ def encode_data(val_loader, model, batch_size):
 		captions = val_data[1]	
 		img_emb, cap_emb = model.forward_emb(images, captions)
 		# all_labels.append(labels)
+		# pdb.set_trace()
 		all_labels[i*batch_size:(i+1)*batch_size] = labels.cpu().detach().numpy()
 		all_img_emb[i*batch_size:(i+1)*batch_size] = img_emb.cpu().detach().numpy()
 		all_cap_emb[i*batch_size:(i+1)*batch_size] = cap_emb.cpu().detach().numpy()
-	
+
 	for j in range(test_num_samples):
 		# pdb.set_trace()
 		sim_mat[j,:] = pairwise_distances(all_img_emb[j,:].reshape(1, -1) , all_cap_emb)#,'cosine')

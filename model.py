@@ -188,7 +188,11 @@ class TripletLoss(nn.Module):
 
         valid_labels = ~i_equal_k & i_equal_j
 
-        return valid_labels.cuda() & distinct_indices.cuda()           
+        return valid_labels.cuda() & distinct_indices.cuda()  
+
+    def semihard_negative(self, loss_values, margin):
+        semihard_negatives = np.where(np.logical_and(loss_values < margin, loss_values > 0))[0]
+        return np.random.choice(semihard_negatives) if len(semihard_negatives) > 0 else None          
 
     def forward(self, labels, embeddings):	
         # Get the pairwise distance matrix
@@ -220,10 +224,71 @@ class TripletLoss(nn.Module):
 
         fraction_positive_triplets = num_positive_triplets / (num_valid_triplets.float() + 1e-16)
 
+        # triplet_loss = self.semihard_negative(triplet_loss.cpu(), self.margin)
         # Get final mean triplet loss over the positive valid triplets
         triplet_loss = triplet_loss.sum() / (num_positive_triplets + 1e-16)
         
         return triplet_loss, fraction_positive_triplets     		
+
+
+class OnlineTripletLoss(nn.Module):
+	"""
+	Online Triplets loss
+	Takes a batch of embeddings and corresponding labels.
+	Triplets are generated using triplet_selector object that take embeddings and targets and return indices of
+	triplets
+	"""
+
+	def __init__(self, margin, triplet_selector):
+		super(OnlineTripletLoss, self).__init__()
+		self.margin = margin
+		self.triplet_selector = triplet_selector
+		
+	def semihard_negative(self, loss_values, margin):
+		semihard_negatives = np.where(np.logical_and(loss_values < margin, loss_values > 0))[0]
+		return np.random.choice(semihard_negatives) if len(semihard_negatives) > 0 else None        
+
+	def forward(self, target, embeddings):
+
+		triplets = self.triplet_selector.get_triplets(embeddings, target)
+
+		if embeddings.is_cuda:
+			triplets = triplets.cuda()
+		# pdb.set_trace()
+		ap_distances = (embeddings[triplets[:, 0]] - embeddings[triplets[:, 1]]).pow(2).sum(1)  # .pow(.5)
+		an_distances = (embeddings[triplets[:, 0]] - embeddings[triplets[:, 2]]).pow(2).sum(1)  # .pow(.5)
+		losses = F.relu(ap_distances - an_distances + self.margin)
+		losses = self.semihard_negative(losses.cpu(), self.margin)
+		# pdb.set_trace()
+		return losses, len(triplets)
+        
+class AllTripletSelector(nn.Module):
+    """
+    Returns all possible triplets
+    May be impractical in most cases
+    """
+
+    def __init__(self):
+        super(AllTripletSelector, self).__init__()
+
+    def get_triplets(self, embeddings, labels):
+        labels = labels.cpu().data.numpy()
+        triplets = []
+        for label in set(labels):
+            label_mask = (labels == label)
+            label_indices = np.where(label_mask)[0]
+            if len(label_indices) < 2:
+                continue
+            negative_indices = np.where(np.logical_not(label_mask))[0]
+            anchor_positives = list(combinations(label_indices, 2))  # All anchor-positive pairs
+
+            # Add all negatives for all positive pairs
+            temp_triplets = [[anchor_positive[0], anchor_positive[1], neg_ind] for anchor_positive in anchor_positives
+                             for neg_ind in negative_indices]
+            triplets += temp_triplets
+
+        return torch.LongTensor(np.array(triplets))        
+
 
 def attention(embed_size, emb_one, emb_two):
     if len(emb_two.shape) == 3:
@@ -252,123 +317,136 @@ def attention(embed_size, emb_one, emb_two):
     
 class CVS(object):
 
-	def __init__(self, opt):
-		self.grad_clip = opt.grad_clip    
-		self.embed_size = opt.embed_size
-		self.num_categories = opt.num_categories
-		self.img_enc = EncodeImage(opt.img_dim, opt.embed_size,
-									opt.finetune, opt.cnn_type)
-		self.txt_enc = EncodeText(opt.word_dim,opt.embed_size, 
-									opt.num_layers)
-		self.cat_class = CategoryClassifier(opt.embed_size, self.num_categories)                                                       
-									
-		if torch.cuda.is_available():
-			self.img_enc.cuda()
-			self.txt_enc.cuda()
-			self.cat_class.cuda()
-			cudnn.benchmark = True 
-			
-		self.sim_criterion = TripletLoss(opt.margin)      
-		self.cat_criterion = nn.CrossEntropyLoss() 
-		# self.mse = criterion = nn.MSELoss()
-		self.params = list(self.img_enc.fc.parameters()) + list(self.txt_enc.parameters())  
-		self.optimizer = torch.optim.Adam(self.params, lr=opt.learning_rate)
+    def __init__(self, opt):
+        self.grad_clip = opt.grad_clip    
+        self.embed_size = opt.embed_size
+        self.num_categories = opt.num_categories
+        self.img_enc = EncodeImage(opt.img_dim, opt.embed_size,
+                                    opt.finetune, opt.cnn_type)
+        self.txt_enc = EncodeText(opt.word_dim,opt.embed_size, 
+                                    opt.num_layers)
+        self.cat_class = CategoryClassifier(opt.embed_size, self.num_categories)                                                       
+                                    
+        if torch.cuda.is_available():
+            self.img_enc.cuda()
+            self.txt_enc.cuda()
+            self.cat_class.cuda()
+            cudnn.benchmark = True 
+            
+        # self.sim_criterion = TripletLoss(opt.margin)      
+        self.sim_criterion = OnlineTripletLoss(opt.margin, AllTripletSelector())      
+        self.cat_criterion = nn.CrossEntropyLoss() 
+        self.params = list(self.img_enc.fc.parameters()) + list(self.txt_enc.parameters())  
+        self.optimizer = torch.optim.Adam(self.params, lr=opt.learning_rate)
+        # self.optimizer = torch.optim.SGD(self.params, lr=opt.learning_rate, momentum=0.8, 
+                                                # weight_decay=0.0002)        
 
-	def to_one_hot(self, labels, num_categories):
-		y = torch.eye(num_categories) 
-		return y[labels.type(torch.LongTensor)] 
-	 
+    def to_one_hot(self, labels, num_categories):
+        y = torch.eye(num_categories) 
+        return y[labels.type(torch.LongTensor)] 
+     
 
-	def category_loss(self, logits_image, logits_sent, labels, num_categories):
-		labels_onehot = self.to_one_hot(labels, num_categories)
-		# pdb.set_trace()	
-		category_loss = self.cat_criterion(logits_image, labels.type(torch.LongTensor).cuda()) + \
-						self.cat_criterion(logits_sent, labels.type(torch.LongTensor).cuda())
-		# loss = category_loss.sum()	
-		return category_loss	
+    def category_loss(self, logits_image, logits_sent, labels, num_categories):
+        labels_onehot = self.to_one_hot(labels, num_categories)
+        # pdb.set_trace()	
+        category_loss = self.cat_criterion(logits_image, labels.type(torch.LongTensor).cuda()) + \
+                        self.cat_criterion(logits_sent, labels.type(torch.LongTensor).cuda())
+        # loss = category_loss.sum()	
+        return category_loss	
 
-	def invariance_loss(self, img_emb, cap_emb):
-		'''
-		loss for positive pairs
-		'''
-		num_samples = img_emb.shape[0]
-		loss = torch.sum((torch.sqrt(torch.sum((img_emb - cap_emb)**2))))
-		loss = loss/num_samples
-		# pdb.set_trace()
-		return loss
-		
-	def lr_scheduler(self):
-		# Learning rate scheduler
-		scheduler = StepLR(self.optimizer, step_size=250, gamma=0.5)
-		scheduler.step()
-		return scheduler.get_lr()[0]
+    def invariance_loss(self, img_emb, cap_emb):
+        '''
+        loss for positive pairs
+        '''
+        num_samples = img_emb.shape[0]
+        loss = torch.sum((torch.sqrt(torch.sum((img_emb - cap_emb)**2))))
+        loss = loss/num_samples
+        # pdb.set_trace()
+        return loss
+        
+    def lr_scheduler(self):
+        # Learning rate scheduler
+        scheduler = StepLR(self.optimizer, step_size=250, gamma=0.5)
+        scheduler.step()
+        return scheduler.get_lr()[0]
 
-	def state_dict(self):
-		state_dict = [self.img_enc.state_dict(), self.txt_enc.state_dict()]
-		return state_dict
+    def state_dict(self):
+        state_dict = [self.img_enc.state_dict(), self.txt_enc.state_dict()]
+        return state_dict
 
-	def train_start(self):
-		"""switch to train mode
-		"""
-		self.img_enc.train()
-		self.txt_enc.train()
+    def train_start(self):
+        """switch to train mode
+        """
+        self.img_enc.train()
+        self.txt_enc.train()
+        
+    def log_histogram(self, Log, count):
+        for tag, value in self.img_enc.named_parameters():
+            tag = tag.replace('.', '/')
+            Log.log_histogram(tag, value.data.cpu().numpy(), count)
+            Log.log_histogram(tag+'/grad', value.grad.data.cpu().numpy(), count)    
+            
+        for tag, value in self.txt_enc.named_parameters():
+            tag = tag.replace('.', '/')
+            Log.log_histogram(tag, value.data.cpu().numpy(), count)
+            Log.log_histogram(tag+'/grad', value.grad.data.cpu().numpy(), count)              
 
-	def val_start(self):
-		"""switch to evaluate mode
-		"""
-		self.img_enc.eval()
-		self.txt_enc.eval()        
-								   
-	def forward_emb(self, images, captions, volatile=False):
-		"""Compute the image and caption embeddings
-		"""
-		# Set mini-batch dataset
-		images = Variable(images, volatile=volatile)
-		captions = Variable(captions, volatile=volatile)		
-		
-		if torch.cuda.is_available():
-			images = images.cuda()
-			captions = captions.cuda()
-		
-		# Forward
-		img_emb = self.img_enc(images)
-		cap_emb = self.txt_enc(captions)
-		img_emb, cap_emb = attention(512, img_emb, cap_emb)
-		# pdb.set_trace()
-		return img_emb, cap_emb
+    def val_start(self):
+        """switch to evaluate mode
+        """
+        self.img_enc.eval()
+        self.txt_enc.eval()        
+                                   
+    def forward_emb(self, images, captions, volatile=False):
+        """Compute the image and caption embeddings
+        """
+        # Set mini-batch dataset
+        images = Variable(images, volatile=volatile)
+        captions = Variable(captions, volatile=volatile)		
+        
+        if torch.cuda.is_available():
+            images = images.cuda()
+            captions = captions.cuda()
+        
+        # Forward
+        img_emb = self.img_enc(images)
+        cap_emb = self.txt_enc(captions)
+        img_emb, cap_emb = attention(512, img_emb, cap_emb)
+        # pdb.set_trace()
+        return img_emb, cap_emb
 
-	def forward_loss(self, labels, img_emb, cap_emb, num_categories):
-		"""Compute the loss given pairs of image and caption embeddings
-		"""
-		# classifier network and loss
-		# pdb.set_trace()
-		labels = labels.cuda()
-		img_pred, cap_pred = self.cat_class(img_emb, cap_emb)
-		cat_loss = self.category_loss(img_pred, cap_pred, labels, num_categories)
-		
-		mm_emb = torch.cat((img_emb,cap_emb), dim=0)
-		mm_label = torch.cat((labels,labels), dim=0)
-		
-		img_loss,_ = self.sim_criterion(labels.cuda(), img_emb)
-		cap_loss,_ = self.sim_criterion(labels, cap_emb)
-		mm_loss,_ = self.sim_criterion(mm_label, mm_emb)
-		metric_loss = 0.5*mm_loss + 0.1*img_loss + 0.5*cap_loss 
+    def forward_loss(self, labels, img_emb, cap_emb, num_categories):
+        """Compute the loss given pairs of image and caption embeddings
+        """
+        # classifier network and loss
+        # pdb.set_trace()
+        labels = labels.cuda()
+        img_pred, cap_pred = self.cat_class(img_emb, cap_emb)
+        cat_loss = self.category_loss(img_pred, cap_pred, labels, num_categories)
+        
+        mm_emb = torch.cat((img_emb,cap_emb), dim=0)
+        mm_label = torch.cat((labels,labels), dim=0)
+        
+        img_loss,_ = self.sim_criterion(labels.cuda(), img_emb)
+        cap_loss,_ = self.sim_criterion(labels, cap_emb)
+        mm_loss,_ = self.sim_criterion(mm_label, mm_emb)
+        metric_loss = 1.0*mm_loss + 0.1*img_loss + 0.5*cap_loss 
 
-		invariance_loss = self.invariance_loss(img_emb, cap_emb)
-		total_loss = 1.0*metric_loss + 1.0*cat_loss #+ 0.5*invariance_loss
-		# total_loss = 1.0*invariance_loss + 1.0*cat_loss
-		
-		# Optimize model
-		total_loss.backward()
-		if self.grad_clip > 0:
-			clip_grad_norm(self.params, self.grad_clip)
-		self.optimizer.step()        
-		return img_loss, cap_loss, mm_loss, metric_loss, total_loss
+        invariance_loss = self.invariance_loss(img_emb, cap_emb)
+        total_loss = 1.0*metric_loss + 1.0*cat_loss #+ 0.5*invariance_loss
+        # total_loss = 1.0*invariance_loss + 1.0*cat_loss
+        
+        # Optimize model
+        total_loss.backward()
+        if self.grad_clip > 0:
+            clip_grad_norm(self.params, self.grad_clip)
+        self.optimizer.step()        
+        return img_loss, cap_loss, mm_loss, metric_loss, total_loss
 
-	def train_emb(self, images, captions, labels, ids=None, *args):
-		"""One training step given images and captions.
-		"""
-		# compute the embeddings
-		img_emb, cap_emb = self.forward_emb(images, captions)
+    def train_emb(self, images, captions, labels, ids=None, *args):
+        """One training step given images and captions.
+        """
+        # compute the embeddings
+        img_emb, cap_emb = self.forward_emb(images, captions)
 
-		return img_emb, cap_emb
+        return img_emb, cap_emb

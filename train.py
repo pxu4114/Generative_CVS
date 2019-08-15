@@ -19,9 +19,9 @@ from model import CVS
 def main():
     # Hyper Parameters
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', default='/shared/kgcoe-research/mil/video_project/cvs/birds/np/zs/',
+    parser.add_argument('--data_path', default='/shared/kgcoe-research/mil/video_project/cvs/flowers/np/',
                         help='path to datasets')
-    parser.add_argument('--data_name', default='birds',
+    parser.add_argument('--data_name', default='flowers',
                         help='birds,flowers,pascal,wiki,nuswide')
     parser.add_argument('--logs_path', default='/shared/kgcoe-research/mil/generative_cvs',
                         help='Path to saved vocabulary pickle files.')
@@ -43,7 +43,7 @@ def main():
                         help='Number of GRU layers.')
     parser.add_argument('--learning_rate', default=.0001, type=float,
                         help='Initial learning rate.')
-    parser.add_argument('--lr_update', default=15, type=int,
+    parser.add_argument('--lr_update', default=50, type=int,
                         help='Number of epochs to update the learning rate.')
     parser.add_argument('--workers', default=15, type=int,
                         help='Number of data loader workers.')
@@ -55,7 +55,7 @@ def main():
                         help='Path to save the model and Tensorboard log.')
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
-    parser.add_argument('--num_categories', default=150,
+    parser.add_argument('--num_categories', default=82,
                         help='Use max instead of sum in the rank loss.')
     parser.add_argument('--img_dim', default=2048, type=int,
                         help='Dimensionality of the image embedding.')    
@@ -91,7 +91,7 @@ def main():
 
     val_dataset = Data_loader(opt.data_path, opt.data_name, opt.num, phase='test')	
     val_loader = torch.utils.data.DataLoader(dataset=val_dataset,
-                                                   batch_size=128, 
+                                                   batch_size=100, 
                                                    shuffle=False,
                                                    num_workers=20) 												   
 
@@ -116,7 +116,7 @@ def main():
     print('number of samples to train: {}'.format(train_dataset.__len__()))
     count = 0
     for epoch in range(opt.num_epochs):
-        lr = model.lr_scheduler
+        # adjust_learning_rate(opt, model.optimizer, epoch)
         # scheduler.step()
         # print(lr)
         model.train_start()
@@ -129,15 +129,18 @@ def main():
             img_loss, cap_loss, mm_loss, metric_loss, total_loss = model.forward_loss(train_data[2], 
                                                 img_emb, cap_emb, opt.num_categories)
 
-            if (i+1) % 20 == 0:				
+            if (i+1) % 5 == 0:				
                 print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' 
                        .format(epoch+1, opt.num_epochs, i+1, total_step, total_loss.item()))
                            
                 # Log scalar values (scalar summary)
                 Log.log_value('loss', total_loss.item(), count)
+                
+                # Log values and gradients of the parameters (histogram summary)
+                model.log_histogram(Log, count)
 
         # evaluate the performance of model on test set
-        i2s, s2i = eval(val_loader, model, opt.batch_size)
+        i2s, s2i = eval(val_dataset, val_loader, model, opt.batch_size)
         avg_score = (i2s+s2i)/2
         Log.log_value('image2text', i2s, count)
         Log.log_value('text2image', s2i, count)
@@ -151,8 +154,9 @@ def main():
             print('checkpoint saved')	
 		
 
-def eval(val_loader, model, batch_size):
-	sim_mat, all_labels = encode_data(val_loader, model, batch_size)
+def eval(val_dataset, val_loader, model, batch_size):
+	# sim_mat, all_labels = encode_data(val_loader, model, batch_size)
+	sim_mat, all_labels = encode_data(val_dataset, val_loader, model, 100)
 	
 	# compute scores
 	i2s_mapk = compMapScore(sim_mat, all_labels)
@@ -162,6 +166,13 @@ def eval(val_loader, model, batch_size):
 	print('text to image: {}'.format(s2i_mapk))
 	return i2s_mapk, s2i_mapk 
 	
-    
+def adjust_learning_rate(opt, optimizer, epoch):
+    """Sets the learning rate to the initial LR
+       decayed by 10 every 30 epochs"""
+    lr = opt.learning_rate * (0.1 ** (epoch // opt.lr_update))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+
+        
 if __name__ == '__main__':
     main()                        
