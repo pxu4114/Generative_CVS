@@ -36,7 +36,7 @@ def main(_):
     if not os.path.exists(cfg.LOGS_DIR):
         os.makedirs(cfg.LOGS_DIR)
 
-    run_config = tf.ConfigProto(device_count = {'GPU': 1,0})
+    run_config = tf.ConfigProto()
     run_config.gpu_options.allow_growth = True
 
     datadir = cfg.DATASET_DIR

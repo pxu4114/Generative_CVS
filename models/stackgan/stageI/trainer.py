@@ -4,13 +4,14 @@ from models.stackgan.stageI.model import ConditionalGan
 from utils.utils import save_images, get_balanced_factorization, initialize_uninitialized, save_captions, save_scores
 from utils.saver import save, load
 from preprocess.dataset import TextDataset
+
 from models.retrieval.datautils import DatasetLoader
 from models.retrieval.main import Retrieval
 from models.retrieval.moreutils import tsneVis, compClusterScores, pairwise_distances
 from models.retrieval.moreutils import compMapScore
-# from moreutils import matlab_mapk as compMapScore
 from models.retrieval.moreutils import compute_nmi, recall_at_k
 from models.retrieval.moreutils import ModelParameters
+
 import numpy as np
 import time
 import pdb

@@ -112,7 +112,7 @@ class StageIEval(object):
         eval_gen, _, _ = self.model.generator(z, cond, reuse=False, is_training=False)
         self.Retrieval.eval(self.bs)
         import pdb
-        pdb.set_trace()
+       
         saver = tf.train.Saver(tf.global_variables('g_net')) 
         # saver = tf.train.Saver(tf.global_variables())
         could_load, _ = load(saver, self.sess, self.cfg.CHECKPOINT_DIR)
@@ -134,6 +134,7 @@ class StageIEval(object):
 
             sample_z = np.random.normal(0, 1, size=(self.bs, self.model.z_dim))
             # _, _, embed, _, _ = self.dataset.test.next_batch(self.bs, 4, embeddings=True)
+            pdb.set_trace()
             _, _, embed, _, _ = self.dataset.test.next_batch(self.bs, 1, embeddings=True)
             start = i * self.bs
             end = start + self.bs

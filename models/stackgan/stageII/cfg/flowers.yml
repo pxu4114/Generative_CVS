@@ -5,11 +5,34 @@ DATASET_DIR: '/shared/kgcoe-research/mil/txt2img/flowers'
 CHECKPOINT_DIR: './checkpoints/ConditionalGAN-StageII/flowers/'
 LOGS_DIR: './logs/stageII_logs/'
 SAMPLE_DIR: './samples/StackGAN-StageII/flowers/'
+SCORE_DIR: './scores/StackGAN-StageII/flowers'
 
+RETRIEVAL:
+    DATA_PATH: '/shared/kgcoe-research/mil/video_project/cvs/flowers/np'
+    ExperimentDirectory: './experiment_nuswide/att_metric_no_skip_2'
+    BATCH_SIZE: 64
+    R_LR: 0.0001
+    RESTORE: False
+    EMBED_DIM: 512
+    SAMPLE_NUM: 64
+    CategoryScale: 1.0
+    im_feat_shape: 2048
+    sent_feat_shape: 4800
+    NumCategories: 82
+    MetricScale: 1.0
+    ModalityScale: 0.0
+    MARGIN: 1.0
+    SaveEvery: 10
+    DROPOUT: 0.95
+    SHARED: False
+    ATTENTION: True
+    SKIP: True
+    IMAGE_AUG: True
+    
 MODEL:
   Z_DIM: 100 # Dimension of the noise vector
   OUTPUT_SIZE: 256 # The ouput size of the image (e.g. 64x64)
-  EMBED_DIM: 1024 # The dimension of the embedding before compression (as given by the cnn-rnn encoder)
+  EMBED_DIM: 512 # The dimension of the embedding before compression (as given by the cnn-rnn encoder)
   COMPRESSED_EMBED_DIM: 128 # The dimension of the embedding after compression
   GF_DIM: 128 # The number of filters in the first convolutional layer of the generator
   DF_DIM: 64 # The number of filters in the first convolutional layer of the discriminator
