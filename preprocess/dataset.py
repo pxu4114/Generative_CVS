@@ -288,8 +288,8 @@ class TextDataset(object):
 		with open(pickle_path + '/label.pickle', 'rb') as f:
 			class_id = pickle.load(f, encoding='bytes')
 			# Bring classes from range [1: 102] to [0: 101]
-			# class_id = np.array(class_id) - 1
-			class_id = np.array(class_id) - 22
+			class_id = np.array(class_id) - 1
+			# class_id = np.array(class_id) - 22
 			print('Class ids:')
 			print(np.unique(class_id))
 

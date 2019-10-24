@@ -225,7 +225,7 @@ class ConditionalGanTrainer(object):
                 if np.mod(counter, 500) == 0:
                     save(self.saver, self.sess, self.cfg.CHECKPOINT_DIR, counter)
                 
-            if np.mod(epoch, 50) == 0 and epoch!=0:
+            if np.mod(epoch, 20) == 0 and epoch!=0:
                 self.ret_eval(epoch)
         
         

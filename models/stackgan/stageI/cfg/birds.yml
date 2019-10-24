@@ -42,7 +42,7 @@ MODEL:
     D: 3
 
 TRAIN:
-  FLAG: False
+  FLAG: True
   BATCH_SIZE: 128 # Size of the training batches
   SAMPLE_NUM: 64 # The number of samples to be generated during training/testing by the sampler network. It must be a perfect square!!!
   EPOCH: 1000 # The number of epochs to train.
@@ -57,7 +57,7 @@ TRAIN:
     KL: 2.0
 
 EVAL:
-  FLAG: True
+  FLAG: False
   INCEP_CHECKPOINT_DIR: ./checkpoints/Inception/birds/
   SAMPLE_SIZE: 1000
   INCEP_BATCH_SIZE: 64

@@ -26,7 +26,7 @@ if __name__ == "__main__":
         batch_size = 16
         if stage[i] >= 6:
             batch_size = 8
-        images = 600000
+        images = 1800000
         max_iters = images // batch_size
         sample_size = 128
 
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         filename_train = '%s/train' % datadir
         dataset.train = dataset.get_data(filename_train)
 
-        pggan = PGGAN(batch_size=batch_size, steps=max_iters,
+        pggan = PGGAN(cfg, batch_size=batch_size, steps=max_iters,
                       check_dir_write=pggan_checkpoint_dir_write, check_dir_read=pggan_checkpoint_dir_read,
                       dataset=dataset, sample_path=sample_path, log_dir=logs_dir, stage=stage[i],
                       trans=t)

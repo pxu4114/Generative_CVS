@@ -136,7 +136,7 @@ class StageIEval(object):
 			sample_z = np.random.normal(0, 1, size=(self.bs, self.model.z_dim))
 			# _, _, embed, _, _ = self.dataset.test.next_batch(self.bs, 4, embeddings=True)
 			_, _, embed, _, _ = self.dataset.test.next_batch(self.bs, 1, embeddings=True)
-			im_feats, sent_feats, labels = self.test_data_loader.get_batch(i, self.bs, phase = 'test')
+			im_feats, sent_feats, labels = self.test_data_loader.get_batch(i, self.bs, phase = 'incep')
 			start = i * self.bs
 			end = start + self.bs
 

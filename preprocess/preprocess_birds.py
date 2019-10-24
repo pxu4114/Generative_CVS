@@ -10,8 +10,8 @@ from sklearn.externals import joblib
 
 import pdb
 
-IMG_SIZES = [360]
-LOAD_SIZE = 360
+IMG_SIZES = [304]
+LOAD_SIZE = 304
 BIRD_DIR = '/shared/kgcoe-research/mil/txt2img/birds'
 
 
@@ -81,9 +81,9 @@ def convert_birds_dataset_pickle(inpath):
 
     filename_bbox = load_bbox(inpath)
     # ## For Train data
-    # train_dir = os.path.join(inpath, 'train/')
-    # train_filenames = load_filenames(train_dir)
-    # save_data_list(inpath, train_dir, train_filenames, filename_bbox)
+    train_dir = os.path.join(inpath, 'train/')
+    train_filenames = load_filenames(train_dir)
+    save_data_list(inpath, train_dir, train_filenames, filename_bbox)
 
     # ## For Test data
     test_dir = os.path.join(inpath, 'test/')

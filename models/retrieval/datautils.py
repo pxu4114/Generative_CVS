@@ -60,7 +60,7 @@ class DatasetLoader():
 
 	def get_batch(self, batch_index, batch_size, phase = 'train', image_aug = True):
 
-		if phase == 'test':
+		if phase == 'incep':
 			start_ind = self._index_in_epoch
 			self._index_in_epoch += batch_size
 
@@ -90,7 +90,7 @@ class DatasetLoader():
 			elif not image_aug:
 				im_feats = self.im_feats[sample_inds,0,:]
 			sent_feats = self.sent_feats[sample_inds,np.random.randint(0, self.sent_im_ratio),:] 
-		elif phase == 'test':
+		elif phase == 'test' or phase == 'incep':
 			if len(self.im_feats.shape) == 2:
 				im_feats = self.im_feats[sample_inds,:] # only one feature per image (no 10x augmentation)
 			else:

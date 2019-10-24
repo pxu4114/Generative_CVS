@@ -1,11 +1,34 @@
 CONFIG_NAME: 'PGGAN'
 DATASET_NAME: 'birds'
 
-DATASET_DIR: './data/birds/'
+DATASET_DIR: '/shared/kgcoe-research/mil/txt2img/birds/'
 CHECKPOINT_DIR: './checkpoints/PGGAN/birds'
 LOGS_DIR: './logs/PGGAN_logs'
 SAMPLE_DIR: './samples/PGGAN/birds'
+SCORE_DIR: './scores/PGGAN/birds'
 
+RETRIEVAL:
+    DATA_PATH: '/shared/kgcoe-research/mil/video_project/cvs/birds/np/zs'
+    ExperimentDirectory: './experiment_nuswide/att_metric_no_skip_2'
+    BATCH_SIZE: 16
+    R_LR: 0.0001
+    RESTORE: False
+    EMBED_DIM: 512
+    SAMPLE_NUM: 64
+    CategoryScale: 1.0
+    im_feat_shape: 2048
+    sent_feat_shape: 4800
+    NumCategories: 150
+    MetricScale: 1.0
+    ModalityScale: 0.0
+    MARGIN: 1.0
+    SaveEvery: 10
+    DROPOUT: 0.95
+    SHARED: False
+    ATTENTION: True
+    SKIP: True
+    IMAGE_AUG: True
+    
 MODEL:
   Z_DIM: 512 # Dimension of the noise vector
   EMBED_DIM: 1024 # The dimension of the embedding before compression (as given by the cnn-rnn encoder)

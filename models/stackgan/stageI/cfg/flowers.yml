@@ -13,7 +13,7 @@ RETRIEVAL:
     BATCH_SIZE: 128
     R_LR: 0.0001
     RESTORE: False
-    EMBED_DIM: 512
+    EMBED_DIM: 1024
     SAMPLE_NUM: 64
     CategoryScale: 1.0
     im_feat_shape: 2048
@@ -32,7 +32,7 @@ RETRIEVAL:
 MODEL:
     Z_DIM: 100 # Dimension of the noise vector
     OUTPUT_SIZE: 64 # The ouput size of the image (e.g 64x64)
-    EMBED_DIM: 512 # The dimension of the embedding before compression (as given by the cnn-rnn encoder)
+    EMBED_DIM: 1024 # The dimension of the embedding before compression (as given by the cnn-rnn encoder)
     COMPRESSED_EMBED_DIM: 128 # The dimension of the embedding after compression
     GF_DIM: 128 # The number of filters in the first convolutional layer of the generator
     DF_DIM: 64 # The number of filters in the first convolutional layer of the discriminator
@@ -42,7 +42,7 @@ MODEL:
         D: 3
 
 TRAIN:
-    FLAG: False
+    FLAG: True
     BATCH_SIZE: 128 # Size of the training batches
     SAMPLE_NUM: 64 # The number of samples to be generated during training/testing by the sampler network. It must be a perfect square!!!
     EPOCH: 600 # The number of epochs to train.
@@ -57,7 +57,7 @@ TRAIN:
         KL: 2.0
 
 EVAL:
-    FLAG: True
+    FLAG: False
     INCEP_CHECKPOINT_DIR: ./checkpoints/Inception/flowers/
     SAMPLE_SIZE: 256
     INCEP_BATCH_SIZE: 64

@@ -5,6 +5,29 @@ DATASET_DIR: '/shared/kgcoe-research/mil/txt2img/flowers/'
 CHECKPOINT_DIR: './checkpoints/PGGAN/flowers'
 LOGS_DIR: './logs/PGGAN_logs'
 SAMPLE_DIR: './samples/PGGAN/flowers'
+SCORE_DIR: './scores/PGGAN/flowers'
+
+RETRIEVAL:
+    DATA_PATH: '/shared/kgcoe-research/mil/video_project/cvs/flowers/np'
+    ExperimentDirectory: './experiment_nuswide/att_metric_no_skip_2'
+    BATCH_SIZE: 16
+    R_LR: 0.0001
+    RESTORE: False
+    EMBED_DIM: 512
+    SAMPLE_NUM: 64
+    CategoryScale: 1.0
+    im_feat_shape: 2048
+    sent_feat_shape: 4800
+    NumCategories: 82
+    MetricScale: 1.0
+    ModalityScale: 0.0
+    MARGIN: 1.0
+    SaveEvery: 10
+    DROPOUT: 0.95
+    SHARED: False
+    ATTENTION: True
+    SKIP: True
+    IMAGE_AUG: True
 
 MODEL:
   Z_DIM: 512 # Dimension of the noise vector
@@ -22,8 +45,8 @@ MODEL:
 
 TRAIN:
   FLAG: True
-  MAX_STEPS: 50000
-  BATCH_SIZE: 128 # Size of the training batches
+  MAX_STEPS: 100000
+  BATCH_SIZE: 16 # Size of the training batches
   SAMPLE_NUM: 16 # The number of samples to be generated during training/testing by the sampler network. It must be a perfect square!!!
   D_LR: 0.0003 # Learning rate
   G_LR: 0.0001

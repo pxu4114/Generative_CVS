@@ -177,4 +177,3 @@ class ConditionalGan(object):
 			net_output = tf.nn.tanh(net_logits)
 			return net_output, mean, log_sigma
 
-
